@@ -3,7 +3,7 @@ import AvrgirlArduino from "avrgirl-arduino";
 
 function App() {
   const boardChoices = [ //Testing values: working | notTested | notWorking
-    { name: "EnviroDIY Mayfly", value: "mayfly", tested: false },
+    { name: "EnviroDIY Mayfly", value: "mayfly", tested: true },
     { name: "Arduino Uno", value: "uno", tested: false },
     { name: "Arduino Mega", value: "mega", tested: false },
     { name: "Arduino ADK", value: "adk", tested: false },
