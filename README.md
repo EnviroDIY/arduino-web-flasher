@@ -1,26 +1,26 @@
 # Arduino Web Flasher
 
-https://arduino-web-flasher.onrender.com/
+https://envirodiy.github.io/arduino-web-flasher/
 
 Arduino Web Flasher is a tool for flashing arduino boards with a binary file through the browser.
 
 I made the tool to enable uploading of sketches to the arduino a much simpler process for clients and users. By uploading the binary directly, users don't need to download Arduino IDE, make sure they have the correct libraries installed, compile to the correct board with the correct settings etc...
 
-The flasher requires a hex/binary file to flash the board, and can not take .ino files directly.   
+The flasher requires a hex/binary file to flash the board, and can not take .ino files directly.
 To generate the binary file from Arduino IDE, please check out this [link](https://randomnerdtutorials.com/bin-binary-files-sketch-arduino-ide/)
 
 ## Built on
 
 This project was built on the wonderful React demo in [avrgirl-arduino](https://github.com/noopkat/avrgirl-arduino)
 
-It runs on React, and was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).  
+It runs on React, and was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 Most of the functionality is contained within `/src/App.js`.
 
 It utilizes tailwindcss for styling
 
 ## How to run
 
-The fastest way is to check out the link: https://arduino-web-flasher.onrender.com/
+The fastest way is to check out the link: https://envirodiy.github.io/arduino-web-flasher/
 
 If you want to run it by yourself, git clone this repository and run the app locally.
 

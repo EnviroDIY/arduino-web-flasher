@@ -3,25 +3,25 @@ import AvrgirlArduino from "avrgirl-arduino";
 
 function App() {
   const boardChoices = [ //Testing values: working | notTested | notWorking
-    { name: "EnviroDIY Mayfly",                   value: "mayfly",                     tested: false },
-    { name: "Arduino Uno",                        value: "uno",                        tested: false },
-    { name: "Arduino Mega",                       value: "mega",                       tested: false },
-    { name: "Arduino ADK",                        value: "adk",                        tested: false },
-    { name: "Arduino Nano",                       value: "nano",                       tested: true  },
-    { name: "Arduino Nano (with new bootloader)", value: "nano (new bootloader)",      tested: false },
-    { name: "Arduino Lilypad USB",                value: "lilypad-usb",                tested: false },
-    { name: "Arduino Yun",                        value: "yun",                        tested: false },
-    { name: "Arduino Esplora",                    value: "esplora",                    tested: false },
-    { name: "Tiny Circuits Tinyduino",            value: "tinyduino",                  tested: false },
-    { name: "SparkFun Pro Micro	",                value: "sf-pro-micro",               tested: false },
-    { name: "Qtechknow Qduino",                   value: "qduino",                     tested: false },
-    { name: "Pinoccio Scout",                     value: "pinoccio",                   tested: false },
-    { name: "Femtoduino IMUduino",                value: "imuduino",                   tested: false },
-    { name: "Adafruit Feather 32u4 Basic Proto",  value: "feather",                    tested: false },
-    { name: "Adafruit Circuit Playground",        value: "circuit-playground-classic", tested: false },
-    { name: "BQ ZUM",                             value: "bqZum",                      tested: false },
-    { name: "BQ ZUM Core 2",                      value: "zumcore2",                   tested: false },
-    { name: "BQ ZUM Junior	",                    value: "zumjunior",                  tested: false },
+    { name: "EnviroDIY Mayfly", value: "mayfly", tested: false },
+    { name: "Arduino Uno", value: "uno", tested: false },
+    { name: "Arduino Mega", value: "mega", tested: false },
+    { name: "Arduino ADK", value: "adk", tested: false },
+    { name: "Arduino Nano", value: "nano", tested: true },
+    { name: "Arduino Nano (with new bootloader)", value: "nano (new bootloader)", tested: false },
+    { name: "Arduino Lilypad USB", value: "lilypad-usb", tested: false },
+    { name: "Arduino Yun", value: "yun", tested: false },
+    { name: "Arduino Esplora", value: "esplora", tested: false },
+    { name: "Tiny Circuits Tinyduino", value: "tinyduino", tested: false },
+    { name: "SparkFun Pro Micro	", value: "sf-pro-micro", tested: false },
+    { name: "Qtechknow Qduino", value: "qduino", tested: false },
+    { name: "Pinoccio Scout", value: "pinoccio", tested: false },
+    { name: "Femtoduino IMUduino", value: "imuduino", tested: false },
+    { name: "Adafruit Feather 32u4 Basic Proto", value: "feather", tested: false },
+    { name: "Adafruit Circuit Playground", value: "circuit-playground-classic", tested: false },
+    { name: "BQ ZUM", value: "bqZum", tested: false },
+    { name: "BQ ZUM Core 2", value: "zumcore2", tested: false },
+    { name: "BQ ZUM Junior	", value: "zumjunior", tested: false },
 
   ];
 
@@ -38,7 +38,7 @@ function App() {
 
   useEffect(() => {
     updateBrowserSupported('serial' in navigator);
-  }, [])
+  }, []);
 
 
 
@@ -53,7 +53,7 @@ function App() {
 
     reader.onload = event => {
       const filecontents = event.target.result;
-      
+
       const avrgirl = new AvrgirlArduino({
         board: board,
         debug: true
@@ -63,12 +63,12 @@ function App() {
         if (error) {
           updateUploadStatus("error");
           updateUploadStatusTitle("Error Flashing Arduino!");
-          updateUploadStatusMsg(error.message)
+          updateUploadStatusMsg(error.message);
 
         } else {
           console.info("flash successful");
           updateUploadStatus("done");
-          updateUploadStatusTitle("Flash Sucessful!");
+          updateUploadStatusTitle("Flash Successful!");
           updateUploadStatusMsg("Successfully flashed the Arduino!");
         }
       });
@@ -78,15 +78,15 @@ function App() {
   const clearStatus = () => {
     updateUploadStatus("");
     updateUploadStatusTitle("");
-    updateUploadStatusMsg("")
-  }
+    updateUploadStatusMsg("");
+  };
 
   const clearFileInput = () => {
     updateFileName("");
     if (fileInput) fileInput.current.value = null;
-  }
+  };
 
-  const BoardOptions = boardChoices.map((board, i) => <option value={board.value} key={i}>{board.name} {board.tested ? '✅' : ''}</option>)
+  const BoardOptions = boardChoices.map((board, i) => <option value={board.value} key={i}>{board.name} {board.tested ? '✅' : ''}</option>);
 
 
   return (
@@ -188,3 +188,5 @@ function App() {
 }
 
 export default App;
+
+// cSpell:ignore filecontents checkmark
