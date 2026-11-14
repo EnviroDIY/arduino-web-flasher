@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import AvrgirlArduino from "avrgirl-arduino";
 
 function App() {
+  const monitorBaudRates = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
+  const maxMonitorCharacters = 100000;
   const boardChoices = [ //Testing values: working | notTested | notWorking
     { name: "EnviroDIY Mayfly", value: "mayfly", tested: true },
     { name: "Arduino Uno", value: "uno", tested: false },
@@ -27,6 +29,11 @@ function App() {
 
   const fileInput = useRef(null);
   const selectedFile = useRef(null);
+  const monitorPort = useRef(null);
+  const monitorReader = useRef(null);
+  const monitorReadLoop = useRef(null);
+  const monitorDisconnectRequested = useRef(false);
+  const monitorOutputElement = useRef(null);
   const [board, updateBoard] = useState(boardChoices[0].value);
   const [fileName, updateFileName] = useState("");
   const [uploadStatus, updateUploadStatus] = useState("");
@@ -34,11 +41,30 @@ function App() {
   const [uploadStatusMsg, updateUploadStatusMsg] = useState("");
   const [browserSupported, updateBrowserSupported] = useState(true);
   const [infoBoardSelectHover, setInfoBoardSelectHover] = useState(false);
+  const [monitorBaudRate, setMonitorBaudRate] = useState(115200);
+  const [monitorStatus, setMonitorStatus] = useState("disconnected");
+  const [monitorOutput, setMonitorOutput] = useState("");
+  const [monitorError, setMonitorError] = useState("");
 
 
 
   useEffect(() => {
     updateBrowserSupported('serial' in navigator);
+  }, []);
+
+  useEffect(() => {
+    if (monitorOutputElement.current) {
+      monitorOutputElement.current.scrollTop = monitorOutputElement.current.scrollHeight;
+    }
+  }, [monitorOutput]);
+
+  useEffect(() => () => {
+    monitorDisconnectRequested.current = true;
+    if (monitorReader.current) {
+      monitorReader.current.cancel().catch(() => {});
+    } else if (monitorPort.current) {
+      monitorPort.current.close().catch(() => {});
+    }
   }, []);
 
 
@@ -49,10 +75,110 @@ function App() {
     updateUploadStatusMsg(error instanceof Error ? error.message : String(error));
   };
 
+  const appendMonitorOutput = text => {
+    if (!text) return;
+
+    setMonitorOutput(output => (output + text).slice(-maxMonitorCharacters));
+  };
+
+  const readSerialOutput = async (port, reader) => {
+    const decoder = new TextDecoder();
+
+    try {
+      while (!monitorDisconnectRequested.current) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        appendMonitorOutput(decoder.decode(value, { stream: true }));
+      }
+      appendMonitorOutput(decoder.decode());
+    } catch (error) {
+      if (!monitorDisconnectRequested.current) {
+        setMonitorError(error instanceof Error ? error.message : String(error));
+      }
+    } finally {
+      try {
+        reader.releaseLock();
+      } catch (error) {
+        console.warn("Could not release the serial monitor reader.", error);
+      }
+
+      if (monitorReader.current === reader) monitorReader.current = null;
+
+      try {
+        await port.close();
+      } catch (error) {
+        if (!monitorDisconnectRequested.current) {
+          setMonitorError(error instanceof Error ? error.message : String(error));
+        }
+      }
+
+      if (monitorPort.current === port) monitorPort.current = null;
+      setMonitorStatus("disconnected");
+    }
+  };
+
+  const connectSerialMonitor = async () => {
+    if (monitorStatus !== "disconnected") return;
+
+    setMonitorStatus("connecting");
+    setMonitorError("");
+    monitorDisconnectRequested.current = false;
+
+    let port;
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: Number(monitorBaudRate) });
+
+      const reader = port.readable.getReader();
+      monitorPort.current = port;
+      monitorReader.current = reader;
+      setMonitorStatus("connected");
+      monitorReadLoop.current = readSerialOutput(port, reader);
+    } catch (error) {
+      if (port && (port.readable || port.writable)) {
+        try {
+          await port.close();
+        } catch (closeError) {
+          console.warn("Could not close the serial monitor port.", closeError);
+        }
+      }
+      setMonitorStatus("disconnected");
+      setMonitorError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const disconnectSerialMonitor = async () => {
+    if (monitorStatus === "disconnected") return;
+
+    monitorDisconnectRequested.current = true;
+    setMonitorStatus("disconnecting");
+    setMonitorError("");
+
+    try {
+      if (monitorReader.current) await monitorReader.current.cancel();
+      if (monitorReadLoop.current) await monitorReadLoop.current;
+    } catch (error) {
+      setMonitorError(error instanceof Error ? error.message : String(error));
+      setMonitorStatus("disconnected");
+    } finally {
+      monitorReadLoop.current = null;
+    }
+  };
+
+  const openSerialMonitor = async () => {
+    clearStatus();
+    await connectSerialMonitor();
+  };
 
 
-  const handleSubmit = e => {
+
+  const handleSubmit = async e => {
     e.preventDefault();
+
+    if (monitorStatus !== "disconnected") {
+      await disconnectSerialMonitor();
+    }
+
     updateUploadStatus("flashing");
     updateUploadStatusTitle("Flashing Arduino...");
     updateUploadStatusMsg("");
@@ -77,7 +203,7 @@ function App() {
             console.info("flash successful");
             updateUploadStatus("done");
             updateUploadStatusTitle("Flash Successful!");
-            updateUploadStatusMsg("Successfully flashed the Arduino!");
+            updateUploadStatusMsg("Successfully flashed the Arduino! Open the serial monitor to view output from the new program.");
           }
         });
       } catch (error) {
@@ -121,8 +247,15 @@ function App() {
   const BoardOptions = boardChoices.map((board, i) => <option value={board.value} key={i}>{board.name} {board.tested ? '✅' : ''}</option>);
 
 
+  const monitorStatusLabel = {
+    connected: "Connected",
+    connecting: "Connecting...",
+    disconnected: "Disconnected",
+    disconnecting: "Disconnecting..."
+  }[monitorStatus];
+
   return (
-    <div className="w-full h-screen bg-gray-900">
+    <div className="w-full min-h-screen bg-gray-900 flex flex-col">
       {!browserSupported && <div className="w-screen h-screen bg-opacity-90 fixed bg-gray-900 z-20 flex flex-col gap-2 justify-center items-center text-white text-lg text-center">
         <h2 className="text-white text-4xl mb-6 font-bold">Browser is not supported😥</h2>
         <p>Sorry, <b>Web Serial</b> is not supported on this browser.</p>
@@ -143,9 +276,13 @@ function App() {
         </span>}
         <h2 className="text-white text-2xl mt-6">{uploadStatusTitle}</h2>
         <p className="text-white mt-2 w-1/2 text-center">{uploadStatusMsg}</p>
-        {uploadStatusMsg && <button className="bg-cyan-500 py-1.5 px-4 hover:bg-cyan-600 rounded-md text-white mt-6" onClick={clearStatus}>Close</button>}
+        {uploadStatusMsg && <div className="flex flex-wrap justify-center gap-3 mt-6">
+          {uploadStatus === 'done' && <button className="bg-cyan-500 py-1.5 px-4 hover:bg-cyan-600 rounded-md text-white" onClick={openSerialMonitor}>Open Serial Monitor</button>}
+          <button className="bg-gray-600 py-1.5 px-4 hover:bg-gray-500 rounded-md text-white" onClick={clearStatus}>Close</button>
+        </div>}
       </div>}
-      <form id="uploadForm" onSubmit={handleSubmit} className="flex flex-col w-4/5 sm:md-2/3 md:w-1/3 lg:w-1/4 m-auto h-full justify-center items-center">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-5 py-12 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+      <form id="uploadForm" onSubmit={handleSubmit} className="flex flex-col w-full max-w-md mx-auto justify-center items-center">
         <h1 className="text-center text-white text-4xl ">Arduino Web Flasher</h1>
         <div className="flex justify-center items-center w-full">
           <div className="flex flex-row justify-center items-center w-full mt-16">
@@ -214,7 +351,41 @@ function App() {
           </span>
         </button>
       </form>
-      <footer className="absolute bottom-2 text-gray-500 left-1/2 transform -translate-x-1/2 flex flex-col text-xs justify-center text-center">
+      <section aria-labelledby="serial-monitor-title" className="w-full max-w-2xl mx-auto bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-b border-gray-700">
+          <div>
+            <h2 id="serial-monitor-title" className="text-white text-lg font-semibold">Serial Monitor</h2>
+            <p className={`text-xs ${monitorStatus === "connected" ? "text-green-400" : "text-gray-400"}`}>{monitorStatusLabel}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="monitor-baud-rate" className="text-xs text-gray-300">Baud</label>
+            <select
+              id="monitor-baud-rate"
+              value={monitorBaudRate}
+              disabled={monitorStatus !== "disconnected"}
+              onChange={event => setMonitorBaudRate(event.target.value)}
+              className="bg-gray-700 border border-gray-600 text-white text-sm rounded-md px-2 py-1.5 disabled:opacity-50"
+            >
+              {monitorBaudRates.map(baudRate => <option value={baudRate} key={baudRate}>{baudRate}</option>)}
+            </select>
+            {monitorStatus === "connected" || monitorStatus === "disconnecting" ?
+              <button type="button" disabled={monitorStatus === "disconnecting"} onClick={disconnectSerialMonitor} className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white text-sm rounded-md px-3 py-1.5">Disconnect</button> :
+              <button type="button" disabled={monitorStatus === "connecting"} onClick={connectSerialMonitor} className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-600 text-white text-sm rounded-md px-3 py-1.5">Connect</button>
+            }
+            <button type="button" onClick={() => setMonitorOutput("")} className="bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-md px-3 py-1.5">Clear</button>
+          </div>
+        </div>
+        {monitorError && <p role="alert" className="px-4 py-2 bg-red-950 text-red-300 text-sm border-b border-red-900">{monitorError}</p>}
+        <pre
+          ref={monitorOutputElement}
+          aria-live="polite"
+          aria-label="Serial output"
+          className="h-80 overflow-auto p-4 bg-gray-950 text-green-300 text-sm font-mono whitespace-pre-wrap break-words"
+        >{monitorOutput || "Connect to a serial port to view output from your program."}</pre>
+        <p className="px-4 py-3 text-xs text-gray-400 border-t border-gray-700">Choose the same baud rate used by <code className="text-gray-300">Serial.begin()</code> in your sketch.</p>
+      </section>
+      </main>
+      <footer className="text-gray-500 flex flex-col text-xs justify-center text-center pb-2">
         <span className="p-2">Built on <a className="underline text-blue-400" href="https://github.com/noopkat/avrgirl-arduino">avrgirl-arduino</a></span>
         <span>Any issues? Please report them <a className="underline text-blue-400" href="https://github.com/EnviroDIY/arduino-web-flasher">here</a></span>
       </footer>
