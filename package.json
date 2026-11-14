@@ -2,7 +2,7 @@
   "name": "arduino-web-flasher",
   "version": "0.1.0",
   "dependencies": {
-    "@testing-library/jest-dom": "^4.2.4",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^9.4.0",
     "@testing-library/user-event": "^7.2.1",
     "avrgirl-arduino": "^5.0.1",
