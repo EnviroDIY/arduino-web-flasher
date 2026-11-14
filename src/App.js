@@ -42,37 +42,55 @@ function App() {
 
 
 
+  const showUploadError = error => {
+    updateUploadStatus("error");
+    updateUploadStatusTitle("Error Flashing Arduino!");
+    updateUploadStatusMsg(error instanceof Error ? error.message : String(error));
+  };
+
+
+
   const handleSubmit = e => {
     e.preventDefault();
     updateUploadStatus("flashing");
     updateUploadStatusTitle("Flashing Arduino...");
+    updateUploadStatusMsg("");
 
 
     const reader = new FileReader();
-    reader.readAsArrayBuffer(fileInput.current.files[0]);
 
     reader.onload = event => {
       const filecontents = event.target.result;
 
-      const avrgirl = new AvrgirlArduino({
-        board: board,
-        debug: true
-      });
+      try {
+        const avrgirl = new AvrgirlArduino({
+          board: board,
+          debug: true
+        });
 
-      avrgirl.flash(filecontents, error => {
-        if (error) {
-          updateUploadStatus("error");
-          updateUploadStatusTitle("Error Flashing Arduino!");
-          updateUploadStatusMsg(error.message);
+        avrgirl.flash(filecontents, error => {
+          if (error) {
+            showUploadError(error);
 
-        } else {
-          console.info("flash successful");
-          updateUploadStatus("done");
-          updateUploadStatusTitle("Flash Successful!");
-          updateUploadStatusMsg("Successfully flashed the Arduino!");
-        }
-      });
+          } else {
+            console.info("flash successful");
+            updateUploadStatus("done");
+            updateUploadStatusTitle("Flash Successful!");
+            updateUploadStatusMsg("Successfully flashed the Arduino!");
+          }
+        });
+      } catch (error) {
+        showUploadError(error);
+      }
     };
+
+    reader.onerror = () => showUploadError(reader.error || new Error("Could not read the selected file."));
+
+    try {
+      reader.readAsArrayBuffer(fileInput.current.files[0]);
+    } catch (error) {
+      showUploadError(error);
+    }
   };
 
   const clearStatus = () => {

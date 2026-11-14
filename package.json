@@ -5,7 +5,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^9.4.0",
     "@testing-library/user-event": "^7.2.1",
-    "avrgirl-arduino": "^5.0.1",
+    "avrgirl-arduino": "git+https://github.com/EnviroDIY/avrgirl-arduino.git#429e712d930447f867d0d2997a14504203fe8506",
     "postcss-cli": "^10.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
